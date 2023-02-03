@@ -5,48 +5,57 @@ const jwt = require('jsonwebtoken');
 const expressJwt = require('express-jwt');
 const { errorHandler } = require('../helpers/dbErrorHandler');
 const _ = require('lodash');
-
+const nodemailer = require('nodemailer')
 const { OAuth2Client } = require('google-auth-library');
-// sendgrid
-const sgMail = require('@sendgrid/mail'); // SENDGRID_API_KEY
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-//sendinblue
-// const sib = require('sib-api-v3-sdk'); 
-// const sclient = Sib.ApiClient.instance
-// const apiKey = client.authentications['api-key']
-// apiKey.apiKey = process.env.SENDINBLUE_API_KEY
 
-// exports.preSignup = (req, res) => {
-//     const { name, email, password } = req.body;
-//     User.findOne({ email: email.toLowerCase() }, (err, user) => {
-//         if (user) {
-//             return res.status(400).json({
-//                 error: 'Email is taken'
-//             });
-//         }
-//         const token = jwt.sign({ name, email, password }, process.env.JWT_ACCOUNT_ACTIVATION, { expiresIn: '10m' });
-//         const emailData = {
-//             from: process.env.EMAIL_FROM,
-//             to: email,
-//             subject: `Account activation link`,
-//             html: `
-//             <p>Please use the following link to activate your acccount:</p>
-//             <p>${process.env.CLIENT_URL}/auth/account/activate/${token}</p>
-//             <hr />
-//             <p>This email may contain sensetive information</p>
-//             <p>https://seoblog.com</p>
-//         `
-//         };
+exports.preSignup = (req, res) => {
+    const { name, email, password } = req.body;
+    User.findOne({ email: email.toLowerCase() }, (err, user) => {
+        if (user) {
+            return res.status(400).json({
+                error: 'Email is taken'
+            });
+        }
+        const token = jwt.sign({ name, email, password }, process.env.JWT_ACCOUNT_ACTIVATION, { expiresIn: '10m' });
+        
+        const transporter = nodemailer.createTransport({
+            service: 'hotmail',
+            auth: {
+                user: process.env.EMAIL_FROM,
+                pass: process.env.PASS,
+            },
+            tls: {
+                rejectUnauthorized: false
+            }
+        });
+        
+        
+        
+        const emailData = {
+            from: process.env.EMAIL_FROM,
+            to: email,
+            subject: `Account activation link`,
+            html: `
+            <p>Please use the following link to activate your acccount:</p>
+            <p>${process.env.CLIENT_URL}/auth/account/activate/${token}</p>
+            <hr />
+            <p>This email may contain sensetive information</p>
+            <p>https://seoblog.com</p>
+        `
+        };
 
-//         sgMail.send(emailData).then(sent => {
-//             return res.json({
-//                 message: `Email has been sent to ${email}. Follow the instructions to activate your account.`
-//             });
-//         }).catch(err => {
-//             //console.log(err)
-//         })
-//     });
-// };
+        transporter.sendMail(emailData).then(sent => {
+            return res.json({
+                message: `Email has been sent to ${email}. Follow the instructions to activate your account.`
+            });
+        }).catch(err => {
+            console.log(err)
+            return res.status(400).json({
+                error: 'email not sent'
+            })
+        })
+    });
+};
 
 exports.signup = (req, res) => {
     User.findOne({ email: req.body.email }).exec((err, user) => {
@@ -224,7 +233,17 @@ exports.forgotPassword = (req, res) => {
             if (err) {
                 return res.json({ error: errorHandler(err) });
             } else {
-                sgMail.send(emailData).then(sent => {
+                const transporter = nodemailer.createTransport({
+                    service: 'hotmail',
+                    auth: {
+                        user: process.env.EMAIL_FROM,
+                        pass: process.env.PASS,
+                    },
+                    tls: {
+                        rejectUnauthorized: false
+                    }
+                });
+                transporter.sendMail(emailData).then(sent => {
                     return res.json({
                         message: `Email has been sent to ${email}. Follow the instructions to reset your password. Link expires in 10min.`
                     });
@@ -275,8 +294,6 @@ exports.resetPassword = (req, res) => {
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 exports.googleLogin = (req, res) => {
     const idToken = req.body.tokenId;
-    console.log(req)
-    console.log("paras")
     client.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID }).then(response => {
         console.log(response)
         const { email_verified, name, email, jti } = response.payload;
