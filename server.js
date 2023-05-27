@@ -28,9 +28,9 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 // cors
-if (process.env.NODE_ENV === "development") {
-    app.use(cors({ origin: `${process.env.CLIENT_URL}` }));
-}
+app.use(cors({ origin: `${process.env.CLIENT_URL}` }));
+// if (process.env.NODE_ENV === "development") {
+// }
 
 //routes middleware
 app.use('', blogRoutes)
