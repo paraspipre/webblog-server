@@ -125,6 +125,7 @@ exports.listAllBlogsCategoriesTags = (req, res) => {
     let categories;
     let tags;
 
+    console.log(req.body)
     Blog.find({})
         .populate('categories', '_id name slug')
         .populate('tags', '_id name slug')
@@ -275,7 +276,7 @@ exports.photo = (req, res) => {
 exports.listRelated = (req, res) => {
     let limit = req.body.limit ? parseInt(req.body.limit) : 3
     const { _id, categories } = req.body.blog
-    
+
     Blog.find({ _id: { $ne: _id }, categories: { $in: categories } })
         .limit(limit)
         .populate('postedBy', '_id name username profile')
@@ -286,7 +287,7 @@ exports.listRelated = (req, res) => {
                     error: 'Blogs not found'
                 })
             }
-            res.json(blogs);            
+            res.json(blogs);
         })
 }
 
@@ -294,11 +295,11 @@ exports.listSearch = (req, res) => {
     const { search } = req.query
     if (search) {
         Blog.find({
-            $or:[{title:{$regex: search,$options:'i'}},{body:{$regex:search,$options:'i'}}]
+            $or: [{ title: { $regex: search, $options: 'i' } }, { body: { $regex: search, $options: 'i' } }]
         }, (err, blogs) => {
             if (err) {
                 return res.status(400).json({
-                    error:errorHandler(err)
+                    error: errorHandler(err)
                 })
             }
             res.json(blogs)

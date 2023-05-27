@@ -19,7 +19,7 @@ const app = express();
 
 // db
 mongoose
-    .connect(process.env.DATABASE, { useNewUrlParser: true, useUnifiedTopology: true})
+    .connect(process.env.DATABASE, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('DB connected'));
 
 // middlewares
@@ -29,16 +29,16 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 // cors
 if (process.env.NODE_ENV === "development") {
-    app.use(cors({origin:`${process.env.CLIENT_URL}`}));
+    app.use(cors({ origin: `${process.env.CLIENT_URL}` }));
 }
 
 //routes middleware
-app.use('/api',blogRoutes)
-app.use('/api',authRoutes)
-app.use('/api',userRoutes)
-app.use('/api',categoryRoutes)
-app.use('/api',tagRoutes)
-app.use('/api', formRoutes)
+app.use('', blogRoutes)
+app.use('', authRoutes)
+app.use('', userRoutes)
+app.use('', categoryRoutes)
+app.use('', tagRoutes)
+app.use('', formRoutes)
 
 
 // port

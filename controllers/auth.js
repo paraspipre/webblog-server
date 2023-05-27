@@ -17,7 +17,7 @@ exports.preSignup = (req, res) => {
             });
         }
         const token = jwt.sign({ name, email, password }, process.env.JWT_ACCOUNT_ACTIVATION, { expiresIn: '10m' });
-        
+
         const transporter = nodemailer.createTransport({
             service: 'hotmail',
             auth: {
@@ -28,9 +28,9 @@ exports.preSignup = (req, res) => {
                 rejectUnauthorized: false
             }
         });
-        
-        
-        
+
+
+
         const emailData = {
             from: process.env.EMAIL_FROM,
             to: email,
@@ -58,6 +58,7 @@ exports.preSignup = (req, res) => {
 };
 
 exports.signup = (req, res) => {
+    console.log(req.body)
     User.findOne({ email: req.body.email }).exec((err, user) => {
         if (user) {
             return res.status(400).json({
