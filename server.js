@@ -28,7 +28,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 // cors
-app.use(cors({ origin: `${process.env.CLIENT_URL}` }));
+app.use(cors({ origin: `*` }));
 // if (process.env.NODE_ENV === "development") {
 // }
 
