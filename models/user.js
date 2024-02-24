@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 const { threadId } = require('worker_threads');
+const bcrypt = require("bcryptjs")
 
 const userSchema = new mongoose.Schema(
     {
@@ -66,16 +67,20 @@ userSchema.virtual('password')
     
 userSchema.methods = {
     authenticate: function (plainText) {
-        return this.encryptPassword(plainText) === this.hashed_password
+        return bcrypt.compare(password, user.hashed_password)
     },
 
-    encryptPassword: function (password) {
+    encryptPassword: async function (password) {
         if (!password) return ''
         try {
-            return crypto
-                .createHmac('sha1', this.salt)
-                .update(password)
-            .digest('hex')
+            const salt = await bcrypt.genSalt(10)
+
+            const hashed_password = await bcrypt.hash(password, salt)
+            return hashed_password
+            // return crypto
+            //     .createHmac('sha1', this.salt)
+            //     .update(password)
+            // .digest('hex')
         }catch(err){
             return ''
         }

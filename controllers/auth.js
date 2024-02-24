@@ -7,6 +7,21 @@ const { errorHandler } = require('../helpers/dbErrorHandler');
 const _ = require('lodash');
 const nodemailer = require('nodemailer')
 const { OAuth2Client } = require('google-auth-library');
+const bcrypt = require("bcryptjs")
+
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: {
+        user: process.env.EMAIL_FROM,
+        pass: process.env.PASS
+    },
+    tls: {
+        rejectUnauthorized: false
+    }
+});
 
 exports.preSignup = (req, res) => {
     const { name, email, password } = req.body;
@@ -18,16 +33,6 @@ exports.preSignup = (req, res) => {
         }
         const token = jwt.sign({ name, email, password }, process.env.JWT_ACCOUNT_ACTIVATION, { expiresIn: '10m' });
 
-        const transporter = nodemailer.createTransport({
-            service: 'hotmail',
-            auth: {
-                user: process.env.EMAIL_FROM,
-                pass: process.env.PASS,
-            },
-            tls: {
-                rejectUnauthorized: false
-            }
-        });
 
 
 
@@ -40,7 +45,7 @@ exports.preSignup = (req, res) => {
             <p>${process.env.CLIENT_URL}/auth/account/activate/${token}</p>
             <hr />
             <p>This email may contain sensetive information</p>
-            <p>https://seoblog.com</p>
+            <p>https://parasblog.vercel.app</p>
         `
         };
 
@@ -57,80 +62,84 @@ exports.preSignup = (req, res) => {
     });
 };
 
-exports.signup = (req, res) => {
-    console.log(req.body)
-    User.findOne({ email: req.body.email }).exec((err, user) => {
-        if (user) {
-            return res.status(400).json({
-                error: "Email is taken"
-            })
-        }
-        const { name, email, password } = req.body
-        let username = shortId.generate()
-        let profile = `${process.env.CLIENT_URL}/profile/${username}`
-
-        let newUser = new User({ name, email, password, profile, username })
-        newUser.save((err, success) => {
-            if (err) {
-                return res.status(400).json({
-                    error: err
-                })
-            }
-            res.json({
-                message: 'Signup success! Please signin.'
-            })
-        })
-    })
-};
-
-
 // exports.signup = (req, res) => {
-//     const token = req.body.token;
-//     if (token) {
-//         jwt.verify(token, process.env.JWT_ACCOUNT_ACTIVATION, function (err, decoded) {
+//     console.log(req.body)
+//     User.findOne({ email: req.body.email }).exec((err, user) => {
+//         if (user) {
+//             return res.status(400).json({
+//                 error: "Email is taken"
+//             })
+//         }
+//         const { name, email, password } = req.body
+//         let username = shortId.generate()
+//         let profile = `${process.env.CLIENT_URL}/profile/${username}`
+
+//         let newUser = new User({ name, email, password, profile, username })
+//         newUser.save((err, success) => {
 //             if (err) {
-//                 return res.status(401).json({
-//                     error: 'Expired link. Signup again'
-//                 });
+//                 return res.status(400).json({
+//                     error: err
+//                 })
 //             }
-
-//             const { name, email, password } = jwt.decode(token);
-
-//             let username = shortId.generate();
-//             let profile = `${process.env.CLIENT_URL}/profile/${username}`;
-
-//             const user = new User({ name, email, password, profile, username });
-//             user.save((err, user) => {
-//                 if (err) {
-//                     return res.status(401).json({
-//                         error: errorHandler(err)
-//                     });
-//                 }
-//                 return res.json({
-//                     message: 'Singup success! Please signin'
-//                 });
-//             });
-//         });
-//     } else {
-//         return res.json({
-//             message: 'Something went wrong. Try again'
-//         });
-//     }
+//             res.json({
+//                 message: 'Signup success! Please signin.'
+//             })
+//         })
+//     })
 // };
 
-exports.signin = (req, res) => {
+
+exports.signup = (req, res) => {
+    try {
+        const activatetoken = req.body.token;
+        console.log(activatetoken,"tokem")
+    if (activatetoken) {
+        jwt.verify(activatetoken, process.env.JWT_ACCOUNT_ACTIVATION,async function (err, decoded) {
+            if (err) {
+                return res.status(401).json({
+                    error: 'Expired link. Signup again'
+                });
+            }
+
+            const { name, email, password } = jwt.decode(activatetoken);
+
+            let username = email.split("@")[0];
+            const salt = await bcrypt.genSalt(10)
+
+            const hashed_password = await bcrypt.hash(password, salt)
+
+            const user = new User({ name, email, hashed_password, username });
+            user.save((err, user) => {
+                if (err) {
+                    return res.status(401).json({
+                        error: errorHandler(err)
+                    });
+                }
+                return res.json({
+                    message: 'Singup success! Please signin'
+                });
+            });
+        });
+    } else {
+        return res.json({
+            message: 'Something went wrong. Try again'
+        });
+        }
+    } catch (err) {
+        res.status(400).send(err.message)
+    }
+};
+
+exports.signin = async (req, res) => {
     const { email, password } = req.body
-    User.findOne({ email }).exec((err, user) => {
+    User.findOne({ email }).exec(async (err, user) => {
         if (err || !user) {
             return res.status(400).json({
                 error: "User with that email does not exist. Please signup."
             })
         }
-        if (!user.authenticate(password)) {
-            return res.status(400).json({
-                error: "Email and password do not match."
-            })
-        }
+        const isMatch = await bcrypt.compare(password, user.hashed_password);
+        if (!isMatch) return res.status(400).send("Email or password is incorrect");
         const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" })
 
         res.cookie('token', token, { expiresIn: "1d" })
@@ -226,7 +235,6 @@ exports.forgotPassword = (req, res) => {
             <p>${process.env.CLIENT_URL}/auth/password/reset/${token}</p>
             <hr />
             <p>This email may contain sensetive information</p>
-            <p>https://seoblog.com</p>
         `
         };
         // populating the db > user > resetPasswordLink
@@ -234,16 +242,6 @@ exports.forgotPassword = (req, res) => {
             if (err) {
                 return res.json({ error: errorHandler(err) });
             } else {
-                const transporter = nodemailer.createTransport({
-                    service: 'hotmail',
-                    auth: {
-                        user: process.env.EMAIL_FROM,
-                        pass: process.env.PASS,
-                    },
-                    tls: {
-                        rejectUnauthorized: false
-                    }
-                });
                 transporter.sendMail(emailData).then(sent => {
                     return res.json({
                         message: `Email has been sent to ${email}. Follow the instructions to reset your password. Link expires in 10min.`
