@@ -254,6 +254,7 @@ exports.forgotPassword = (req, res) => {
 
 exports.resetPassword = (req, res) => {
     const { resetPasswordLink, newPassword } = req.body;
+    console.log(newPassword,resetPasswordLink)
 
     if (resetPasswordLink) {
         jwt.verify(resetPasswordLink, process.env.JWT_RESET_PASSWORD, function (err, decoded) {
